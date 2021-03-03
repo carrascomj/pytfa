@@ -27,6 +27,7 @@ from .utils import (
     check_transport_reaction,
     find_transported_mets,
     get_reaction_compartment,
+    PROTON
 )
 from ..optim.constraints import (
     SimultaneousUse,
@@ -69,7 +70,8 @@ class ThermoModel(LCSBModel, Model):
     def __init__(self, thermo_data=None, model=Model(), name=None,
                  temperature=std.TEMPERATURE_0,
                  min_ph=std.MIN_PH,
-                 max_ph=std.MAX_PH):
+                 max_ph=std.MAX_PH,
+                 annotation_key="seed_id"):
 
         """
         :param float temperature: the temperature (K) at which to perform the calculations
@@ -84,6 +86,7 @@ class ThermoModel(LCSBModel, Model):
         self.TEMPERATURE = temperature
         self.thermo_data = thermo_data
         self.parent = model
+        self.annotation_key = annotation_key
 
         # CONSTANTS
         self.MAX_pH = max_ph
@@ -150,21 +153,23 @@ class ThermoModel(LCSBModel, Model):
         CompartmentionicStr = self.compartments[met.compartment]["ionicStr"]
 
         # Which index of the reaction DB do you correspond to ?
-        if not "seed_id" in met.annotation:
+        if not self.annotation_key in met.annotation:
             # raise Exception("seed_id missing for " + met.name)
             self.logger.debug(
-                "Metabolite {} ({}) has no seed_id".format(met.id, met.name)
+                "Metabolite {} ({}) has no {}".format(
+                    met.id, met.name, self.annotation
+                )
             )
             metData = None
-        elif not met.annotation["seed_id"] in self.compounds_data:
+        elif not met.annotation[self.annotation] in self.compounds_data:
             self.logger.debug(
                 "Metabolite {} ({}) not present in thermoDB".format(
-                    met.annotation["seed_id"], met.name
+                    met.annotation[self.annotation], met.name
                 )
             )
             metData = None
         else:
-            metData = self.compounds_data[met.annotation["seed_id"]]
+            metData = self.compounds_data[met.annotation[self.annotation]]
             # Override the formula
             met.formula = metData["formula"]
 
@@ -247,7 +252,10 @@ class ThermoModel(LCSBModel, Model):
 
             if reaction.thermo["isTrans"]:
                 (rhs, breakdown) = calcDGtpt_rhs(
-                    reaction, self.compartments, self.thermo_unit
+                    reaction,
+                    self.compartments,
+                    self.thermo_unit,
+                    self.annotation_key
                 )
 
                 reaction.thermo["deltaGR"] = rhs
@@ -256,7 +264,7 @@ class ThermoModel(LCSBModel, Model):
             else:
                 for met in reaction.metabolites:
                     if met.formula != "H" or (
-                        "seed_id" in met.annotation
+                        self.annotation_key in met.annotation
                         # That's H+
                         and met.annotation["seed_id"] != "cpd00067"
                     ):
@@ -311,8 +319,8 @@ class ThermoModel(LCSBModel, Model):
         proton = {}
         for i in range(num_mets):
             if self.metabolites[i].formula == "H" or (
-                "seed_id" in self.metabolites[i].annotation
-                and self.metabolites[i].annotation["seed_id"] == "cpd00067"
+                self.annotation_key in self.metabolites[i].annotation
+                and self.metabolites[i].annotation[self.annotation_key] in PROTON
             ):
                 proton[self.metabolites[i].compartment] = self.metabolites[i]
 
