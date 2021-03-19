@@ -133,7 +133,7 @@ def check_reaction_balance(reaction, proton = None):
     return 'missing atoms'
 
 
-def find_transported_mets(reaction):
+def find_transported_mets(reaction, annotation_key="seed_id"):
     """
     Get a list of the transported metabolites of the reaction.
 
@@ -163,7 +163,7 @@ def find_transported_mets(reaction):
     reactants_coeffs = {}
 
     for met in reaction.reactants:
-        reactants_coeffs[met.annotation['seed_id']] = {
+        reactants_coeffs[met.annotation[annotation_key]] = {
             'coeff':reaction.metabolites[met],
             'met':met
         }
@@ -172,7 +172,7 @@ def find_transported_mets(reaction):
     trans_coeffs = {}
 
     for met in reaction.products:
-        seed_id = met.annotation['seed_id']
+        seed_id = met.annotation[annotation_key]
 
         # If the seed_id also corresponds to a reactant, we add it to the result
         if seed_id in reactants_coeffs:
@@ -188,7 +188,7 @@ def find_transported_mets(reaction):
     return trans_coeffs
 
 
-def check_transport_reaction(reaction):
+def check_transport_reaction(reaction, annotation_key="seed_id"):
     """
 
     Check if a reaction is a transport reaction
@@ -207,10 +207,10 @@ def check_transport_reaction(reaction):
     seed_ids = {}
     try:
         for reactant in reaction.reactants:
-            seed_ids[reactant.annotation['seed_id']] = True
+            seed_ids[reactant.annotation[annotation_key]] = True
 
         for product in reaction.products:
-            if product.annotation['seed_id'] in seed_ids:
+            if product.annotation[annotation_key] in seed_ids:
                 return True
     except KeyError:
         reactants_ids = [x.id.replace(x.compartment,'') for x in reaction.reactants]

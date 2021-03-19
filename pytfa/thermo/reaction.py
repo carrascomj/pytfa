@@ -69,7 +69,7 @@ def calcDGtpt_rhs(
     RT_sum_H_LC_tpt = 0  # to include the differential proton concentration
     # effects if protons are transported
 
-    transportedMets = find_transported_mets(reaction)
+    transportedMets = find_transported_mets(reaction, annotation_key)
     compartments = {'reactant': [], 'product': []}
 
     for met_id in transportedMets:
@@ -140,7 +140,8 @@ def calcDGtpt_rhs(
                 * transportedMets[met_id]['coeff'])
 
     for met in final_coeffs:
-        if final_coeffs[met] != 0 and met.annotation['met_id'] not in PROTON:
+        if (final_coeffs[met] != 0 and
+                met.annotation[annotation_key] not in PROTON):
 
             met_deltaGis = met.thermo.deltaGf_tr
             sum_deltaGFis += final_coeffs[met] * met_deltaGis
